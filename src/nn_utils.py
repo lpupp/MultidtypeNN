@@ -2,7 +2,8 @@
 
 import tensorflow as tf
 
-def weight_variable(w_dim, name, trainable=True, dtype):
+
+def weight_variable(w_dim, name, dtype, trainable=True):
     """Create weights.
 
     Args:
@@ -12,13 +13,13 @@ def weight_variable(w_dim, name, trainable=True, dtype):
     return tf.Variable(tf.random_normal(w_dim, dtype=dtype) / t_stnd, name=name, trainable=trainable)
 
 
-def bias_variable(b_dim, name, trainable=True, dtype):
+def bias_variable(b_dim, name, dtype, trainable=True):
     """Create biases."""
     t_stnd = tf.cast(b_dim[0], dtype) * 1000
     return tf.Variable(tf.random_normal(b_dim, dtype=dtype) / t_stnd, name=name, trainable=trainable)
 
 
-def init_param(n_nodes, params, trainable=True, dtype=tf.int32):
+def init_param(n_nodes, params, trainable=True, dtype=tf.int32, tb_flag=False):
     n_layers = len(n_nodes)
 
     x = {}
@@ -35,7 +36,7 @@ def init_param(n_nodes, params, trainable=True, dtype=tf.int32):
         nm = params[0] + str(i)
         with tf.name_scope(params):
             [n_nodes[i+1]]
-            x[i] = _var(_dim(i), name=nm, trainable=trainable, dtype=dtype)
+            x[i] = _var(_dim(i), name=nm, dtype=dtype, trainable=trainable)
             if tb_flag:
                 tf.summary.histogram(nm, x[i])
     return x
