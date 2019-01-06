@@ -19,3 +19,7 @@ def cast_assign_params(from_params, to_params, dtype):
     for layer in from_params:
         print('casting layer {}'.format(layer))
         to_params[layer] = tf.assign(tf.cast(from_params[layer], dtype))
+
+
+def read_data(path):
+    pass
