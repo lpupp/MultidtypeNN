@@ -6,6 +6,14 @@ import numpy as np
 from utils import dtype2str, cast_params
 from nn_utils import init_param
 
+tf2np_dtypes = {tf.int8: np.int8,
+	            tf.int16: np.int16,
+	            tf.int32: np.int32,
+	            tf.int64: np.int64,
+	            tf.float16: np.half,
+	            tf.float32: np.single,
+	            tf.float64: np.double}
+
 
 class NeuralNet(object):
     def __init__(self, n_nodes,
@@ -46,7 +54,7 @@ class NeuralNet(object):
         for i in range(0, int(x.shape[0]/batch_size)):
             minibatch = x[i*batch_size:(i+1)*batch_size]
             out.append(self.__call__(minibatch, training=training))
-        return np.concatenate(out, axis=1)  # TODO (@lpupp)
+        return tf.concat(out, axis=0)  # TODO (@lpupp)
 
 
 # TODO (@lpupp) Stick this in some model file
@@ -174,17 +182,17 @@ class MultidtypeNN(object):
 
         self.train_inited = True
 
-    def train(self, x):
+    def train(self, sess, x):
         assert self.train_inited, 'Run MultidtypeNN.train_init(...) before training.'
 
         init = tf.global_variables_initializer()
-        sess = tf.Session()
         sess.run(init)
 
         for dt in range(self.len_dtypes):
             print('training {}'.format(self.current_dtype))
             for epoch in range(self.n_epochs[dt]):
-                print('training epoch {}/{}'.format(epoch, self.n_epochs[dt]-1))
+                if epoch % 100 == 0:
+                    print('training epoch {}/{}'.format(epoch, self.n_epochs[dt]-1))
                 self._train_epoch_dtype(sess, x)
             if dt != self.len_dtypes-1:
                 self._cast_params_2_next_dtype()
@@ -194,9 +202,11 @@ class MultidtypeNN(object):
 
     def _train_epoch_dtype(self, sess, x):
         dtype_nm = dtype2str(self.current_dtype)
+        np_dtype = tf2np_dtypes[self.current_dtype]
+        x_ = x.astype(np_dtype)
 
-        for i in range(0, int(x.shape[0]/self.batch_size), self.batch_size):
-            x_mb = x[i*self.batch_size:(i+1)*self.batch_size]
+        for i in range(0, int(x_.shape[0]/self.batch_size)):
+            x_mb = x_[i*self.batch_size:(i+1)*self.batch_size]
             sess.run(self.train_step[dtype_nm], feed_dict={self.x[dtype_nm]: x_mb})
 
     def _cast_params_2_next_dtype(self):
@@ -225,16 +235,18 @@ class MultidtypeNN(object):
                                       dropout_rate=self.drop_rate)
 
     def predict(self, x, batch_size, training=False):
+        print('predicting for {}'.format(self.current_dtype))
         dtype_nm = dtype2str(self.current_dtype)
+
+        np_dtype = tf2np_dtypes[self.current_dtype]
         nn = self.NN[dtype_nm]
 
-        return nn.predict(x, batch_size, training)
+        return nn.predict(x.astype(np_dtype), batch_size, training)
 
     def __call__(self, x, training=True):
         dtype_nm = dtype2str(self.current_dtype)
 
-        # TODO(@lpupp) is this needed?
-        x = x.astype(tf2np_dtypes[self.current_dtype])
+        np_dtype = tf2np_dtypes[self.current_dtype]
         nn = self.NN[dtype_nm]
 
-        return nn(x)
+        return nn(x.astype(np_dtype))
